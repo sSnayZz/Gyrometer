@@ -6,6 +6,7 @@
 #define I2C_PORT i2c0
 #define SDA_PIN 20
 #define SCL_PIN 21
+#define LED_PIN 2
 
 #define MPU6050_ADDR 0x68
 #define REG_PWR_MGMT_1    0x6B
@@ -74,6 +75,13 @@ int main() {
     gpio_pull_up(SDA_PIN);
     gpio_pull_up(SCL_PIN);
 
+    // init LED
+    gpio_init(2);
+    gpio_set_dir(2, true);
+
+    gpio_init(3);
+    gpio_set_dir(3, true);
+
     // wake MPU
     uint8_t wake[2] = {REG_PWR_MGMT_1, 0x00};
     i2c_write_blocking(I2C_PORT, MPU6050_ADDR, wake, 2, false);
@@ -110,6 +118,22 @@ int main() {
 
         printf("Ax=%.3fg Ay=%.3fg Az=%.3fg | Gx=%.2fdps Gy=%.2fdps Gz=%.2fdps | T=%.2fC\n",
                ax_g, ay_g, az_g, gx_dps, gy_dps, gz_dps, temp_c);
+
+        if(ax_g > 0.300 || ax_g < -0.300)
+        {
+            gpio_put(2, 1);
+        }
+        else {
+            gpio_put(2, 0);
+        }
+
+        if(ay_g > 0.300 || ay_g < -0.300)
+        {
+            gpio_put(3, 1);
+        }
+        else {
+            gpio_put(3, 0);
+        }
 
         sleep_ms(80);
     }
