@@ -81,23 +81,23 @@ void init_pico(void)
     gpio_pull_up(SCL_PIN);
 
     // init LED
-    gpio_init(5);
-    gpio_set_dir(5, true);
+    gpio_init(9);
+    gpio_set_dir(9, true);
 
-    gpio_init(6);
-    gpio_set_dir(6, true);
+    gpio_init(10);
+    gpio_set_dir(10, true);
 
-    gpio_init(8);
-    gpio_set_dir(8, true);
-
-    gpio_init(28);
-    gpio_set_dir(28, true);
-
-    gpio_init(27);
-    gpio_set_dir(27, true);
+    gpio_init(11);
+    gpio_set_dir(11, true);
 
     gpio_init(22);
     gpio_set_dir(22, true);
+
+    gpio_init(21);
+    gpio_set_dir(21, true);
+
+    gpio_init(20);
+    gpio_set_dir(20, true);
 }
 
 // read raw 14 bytes (accel,temp,gyro)
@@ -155,26 +155,26 @@ void led_accel(float accel_x, float accel_y, float accel_z)
 {
     if(accel_x > 0.300 || accel_x < -0.300)
         {
-            gpio_put(5, 1);
+            gpio_put(9, 1);
         }
     else {
-            gpio_put(5, 0);
+            gpio_put(9, 0);
         }
 
     if(accel_y > 0.300 || accel_y < -0.300)
         {
-            gpio_put(6, 1);
+            gpio_put(10, 1);
         }
     else {
-            gpio_put(6, 0);
+            gpio_put(10, 0);
         }
 
     if(accel_z < -1.8)
         {
-            gpio_put(8, 1);
+            gpio_put(11, 1);
         }
     else {
-            gpio_put(8, 0);
+            gpio_put(11, 0);
         }
 }
 
@@ -183,25 +183,25 @@ void led_gyro(float gyro_x, float gyro_y, float gyro_z)
 {
     if(gyro_x > 50 || gyro_x < -50)
         {
-            gpio_put(28, 1);
+            gpio_put(21, 1);
         }
     else {
-            gpio_put(28, 0);
+            gpio_put(21, 0);
         }
 
     if(gyro_y > 50 || gyro_y < -50)
-        {
-            gpio_put(27, 1);
-        }
-    else {
-            gpio_put(27, 0);
-        }
-
-    if(gyro_z > 50 || gyro_z < -50)
         {
             gpio_put(22, 1);
         }
     else {
             gpio_put(22, 0);
+        }
+
+    if(gyro_z > 50 || gyro_z < -50)
+        {
+            gpio_put(20, 1);
+        }
+    else {
+            gpio_put(20, 0);
         }
 }
