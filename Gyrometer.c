@@ -2,11 +2,15 @@
 #include <math.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
+#include "ssd1306.h"
 
-#define I2C_PORT i2c0
-#define SCL_PIN 17
-#define SDA_PIN 16
-#define FS_PIN 27
+#define MPU_I2C_PORT i2c0
+#define OLED_I2C_PORT i2c1
+#define MPU_SCL_PIN 17
+#define MPU_SDA_PIN 16
+#define OLED_SDA_PIN 14
+#define OLED_SCL_PIN 15
+//#define FS_PIN 27
 
 // Définitions des adresses
 #define MPU6050_ADDR 0x68
@@ -20,8 +24,8 @@ void calibrate(int samples);
 void led_accel(float accel_x, float accel_y, float accel_z);
 void led_gyro(float gyro_x, float gyro_y, float gyro_z);
 void affichage_axes(float ax_g, float ay_g, float az_g, float gx_dps, float gy_dps, float gz_dps, float temp_c);
-uint32_t read_pulse_us(uint gpio);
-void led_fs(uint LED_PIN, uint RX_PIN);
+//uint32_t read_pulse_us(uint gpio);
+//void led_fs(uint LED_PIN, uint RX_PIN);
 void mpu_calc(void);
 
 volatile float ax, ay, az, gx, gy, gz, temperature;
@@ -29,19 +33,31 @@ volatile float ax, ay, az, gx, gy, gz, temperature;
 // Stockage de la calibration
 int32_t ax_offset = 0, ay_offset = 0, az_offset = 0;
 float accel_scale = 1.0f; // facteur global
+// Création de l’objet écran
+ssd1306_t disp;
 
 int main()
 {
+    ssd1306_clear(&disp);
+
     stdio_init_all();
     init_pico();
 
     // wake MPU
     uint8_t wake[2] = {REG_PWR_MGMT_1, 0x00};
-    i2c_write_blocking(I2C_PORT, MPU6050_ADDR, wake, 2, false);
+    i2c_write_blocking(MPU_I2C_PORT, MPU6050_ADDR, wake, 2, false);
+
+    ssd1306_init(&disp, 128, 64, false, 0x3C, i2c1); // adresse par défaut 0x3C
 
     sleep_ms(500);
     printf("Starting calibration (place sensor flat and keep still)...\n");
+    
+    ssd1306_draw_string(&disp, 8, 32, true, "Calibration...");
+    ssd1306_show(&disp);
+
     calibrate(500); // exemple : 500 échantillons
+
+    char buffer[24];
 
     while (1)
     {
@@ -49,19 +65,51 @@ int main()
         affichage_axes(ax, ay, az, gx, gy, gz, temperature);
         led_accel(ax, ay, az);
         led_gyro(gx, gy, gz);
-        led_fs(22, FS_PIN);
-        sleep_ms(1000);
+        //led_fs(22, FS_PIN);
+
+        ssd1306_clear(&disp);
+
+        ssd1306_draw_string(&disp, 0, 0, true, "MPU6050 - Donnees");
+
+        sprintf(buffer, "AX: %2.2f g", ax);
+        ssd1306_draw_string(&disp, 2, 16, true, buffer);
+        
+        sprintf(buffer, "AY: %2.2f g", ay);
+        ssd1306_draw_string(&disp, 2, 24, true, buffer);
+        
+        sprintf(buffer, "AZ: %2.2f g", az);
+        ssd1306_draw_string(&disp, 2, 32, true, buffer);
+        
+        sprintf(buffer, "GX: %2.1f %c/s", gx);
+        ssd1306_draw_string(&disp, 2, 40, true, buffer);
+        
+        sprintf(buffer, "GY: %2.1f %c/s", gy);
+        ssd1306_draw_string(&disp, 2, 48, true, buffer);
+
+        sprintf(buffer, "GZ: %2.1f %c/s", gz);
+        ssd1306_draw_string(&disp, 2, 56, true, buffer);
+
+        ssd1306_show(&disp);
+
+        sleep_ms(250);
     }
 }
 
 void init_pico(void)
 {
-    // init I2C
-    i2c_init(I2C_PORT, 100 * 1000);
-    gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
-    gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
-    gpio_pull_up(SDA_PIN);
-    gpio_pull_up(SCL_PIN);
+    // init I2C MPU
+    i2c_init(MPU_I2C_PORT, 100 * 1000);
+    gpio_set_function(MPU_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(MPU_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(MPU_SDA_PIN);
+    gpio_pull_up(MPU_SCL_PIN);
+
+    // Initialisation I2C OLED
+    i2c_init(OLED_I2C_PORT, 400000);
+    gpio_set_function(OLED_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(OLED_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(OLED_SDA_PIN);
+    gpio_pull_up(OLED_SCL_PIN);
 
     // init LED
     gpio_init(9);
@@ -82,8 +130,8 @@ void init_pico(void)
     gpio_init(20);
     gpio_set_dir(20, true);
 
-    gpio_init(FS_PIN);
-    gpio_set_dir(FS_PIN, GPIO_IN);
+    //gpio_init(FS_PIN);
+    //gpio_set_dir(FS_PIN, GPIO_IN);
 }
 
 void affichage_axes(float ax, float ay, float az, float gx, float gy, float gz, float temp)
@@ -96,8 +144,8 @@ void mpu_read_raw(int16_t *ax, int16_t *ay, int16_t *az, int16_t *temp, int16_t 
 {
     uint8_t reg = REG_ACCEL_XOUT_H;
     uint8_t buf[14];
-    i2c_write_blocking(I2C_PORT, MPU6050_ADDR, &reg, 1, true);
-    i2c_read_blocking(I2C_PORT, MPU6050_ADDR, buf, 14, false);
+    i2c_write_blocking(MPU_I2C_PORT, MPU6050_ADDR, &reg, 1, true);
+    i2c_read_blocking(MPU_I2C_PORT, MPU6050_ADDR, buf, 14, false);
 
     *ax = (int16_t)((buf[0] << 8) | buf[1]);
     *ay = (int16_t)((buf[2] << 8) | buf[3]);
@@ -207,7 +255,7 @@ void led_gyro(float gyro_x, float gyro_y, float gyro_z)
         gpio_put(20, 0);
     }
 }
-
+/*
 // mesure la largeur d'impulsion en microsecondes
 uint32_t read_pulse_us(uint gpio)
 {
@@ -225,8 +273,9 @@ uint32_t read_pulse_us(uint gpio)
 
     return absolute_time_diff_us(start, end);
 }
+*/
 
-void led_fs(uint LED_PIN, uint RX_PIN)
+/*void led_fs(uint LED_PIN, uint RX_PIN)
 {
     uint32_t pulse = read_pulse_us(RX_PIN);
 
@@ -240,7 +289,7 @@ void led_fs(uint LED_PIN, uint RX_PIN)
         gpio_put(LED_PIN, 0); // LED OFF
     }
 }
-
+*/
 void mpu_calc(void)
 {
     int16_t ax_raw, ay_raw, az_raw, temp, gx_raw, gy_raw, gz_raw;
