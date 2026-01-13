@@ -38,16 +38,15 @@ ssd1306_t disp;
 
 int main()
 {
-    ssd1306_clear(&disp);
-
     stdio_init_all();
     init_pico();
+    ssd1306_init(&disp, 128, 64, false, 0x3C, i2c1); // adresse par défaut 0x3C
+    ssd1306_clear(&disp);
 
     // wake MPU
     uint8_t wake[2] = {REG_PWR_MGMT_1, 0x00};
     i2c_write_blocking(MPU_I2C_PORT, MPU6050_ADDR, wake, 2, false);
 
-    ssd1306_init(&disp, 128, 64, false, 0x3C, i2c1); // adresse par défaut 0x3C
 
     sleep_ms(500);
     printf("Starting calibration (place sensor flat and keep still)...\n");
