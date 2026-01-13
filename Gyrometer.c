@@ -80,13 +80,13 @@ int main()
         sprintf(buffer, "AZ: %2.2f g", az);
         ssd1306_draw_string(&disp, 2, 32, true, buffer);
         
-        sprintf(buffer, "GX: %2.1f %c/s", gx);
+        sprintf(buffer, "GX: %2.1f dps", gx);
         ssd1306_draw_string(&disp, 2, 40, true, buffer);
         
-        sprintf(buffer, "GY: %2.1f %c/s", gy);
+        sprintf(buffer, "GY: %2.1f dps", gy);
         ssd1306_draw_string(&disp, 2, 48, true, buffer);
 
-        sprintf(buffer, "GZ: %2.1f %c/s", gz);
+        sprintf(buffer, "GZ: %2.1f dps", gz);
         ssd1306_draw_string(&disp, 2, 56, true, buffer);
 
         ssd1306_show(&disp);
